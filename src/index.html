@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Kas Rumah</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a;
+      --bg2: #1e293b;
+      --bg3: #334155;
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --inc: #34d399;
+      --exp: #f87171;
+      --sav: #60a5fa;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app { padding-bottom: 3rem; }
+
+    /* LOADING */
+    .loading-screen {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; transition: opacity 0.4s;
+    }
+    .loading-screen.fade { opacity: 0; pointer-events: none; }
+    .loading-inner { text-align: center; color: var(--text2); font-size: 14px; }
+    .loading-icon { font-size: 48px; margin-bottom: 16px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+      padding: 1.5rem 1.25rem 1.25rem;
+      border-bottom: 1px solid var(--bg2);
+    }
+    .header-sub { font-size: 13px; color: var(--text2); margin-bottom: 2px; }
+    .header-title { font-size: 24px; font-weight: 700; margin-bottom: 1.25rem; }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .metric-card {
+      border-radius: var(--radius-sm);
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .metric-icon { font-size: 16px; font-weight: 700; }
+    .metric-label { font-size: 11px; color: var(--text2); }
+    .metric-val { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .bal-card { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
+    .bal-card .metric-icon, .bal-card .metric-val { color: var(--sav); }
+
+    .inc-card { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); }
+    .inc-card .metric-icon, .inc-card .metric-val { color: var(--inc); }
+
+    .exp-card { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+    .exp-card .metric-icon, .exp-card .metric-val { color: var(--exp); }
+
+    /* FILTER BAR */
+    .filter-bar {
+      padding: 10px 1.25rem;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--bg3);
+    }
+    .filter-bar select {
+      width: 100%;
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid #475569;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    /* TAB NAV */
+    .tab-nav {
+      display: flex;
+      background: var(--bg2);
+      padding: 8px 1.25rem;
+      gap: 6px;
+      border-bottom: 1px solid var(--bg3);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 7px 0;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: var(--bg3);
+      border-color: #475569;
+      color: var(--text);
+    }
+
+    /* TAB SECTIONS */
+    .tab-section { display: none; padding: 1.25rem; }
+    .tab-section.active { display: block; }
+    .section-label {
+      font-size: 12px; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    /* RINGKASAN */
+    .bar-item { margin-bottom: 14px; }
+    .bar-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+    .bar-cat { color: var(--text); }
+    .bar-amt { color: var(--text2); font-weight: 500; }
+    .bar-bg { background: var(--bg3); border-radius: 4px; height: 7px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; background: var(--exp); transition: width 0.5s ease; }
+
+    .empty-state { text-align: center; color: var(--text2); font-size: 14px; padding: 3rem 0; }
+
+    /* FORM */
+    .form-card {
+      background: var(--bg2);
+      border: 1px solid var(--bg3);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .type-toggle {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 1.25rem;
+    }
+    .type-btn {
+      padding: 10px;
+      background: var(--bg3);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text2);
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .type-btn.active-inc { background: rgba(52,211,153,0.15); border-color: var(--inc); color: var(--inc); }
+    .type-btn.active-exp { background: rgba(248,113,113,0.15); border-color: var(--exp); color: var(--exp); }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid #475569;
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--sav); }
+    .form-group input::placeholder { color: #475569; }
+    .form-group select option { background: var(--bg2); }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .btn-simpan {
+      width: 100%; padding: 12px;
+      background: var(--sav);
+      border: none; border-radius: var(--radius-sm);
+      color: #0f172a; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s;
+      margin-top: 4px; font-family: inherit;
+    }
+    .btn-simpan:active { opacity: 0.8; }
+
+    /* RIWAYAT */
+    .tx-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--bg3);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+    }
+    .tx-badge {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .tx-badge.inc { background: rgba(52,211,153,0.15); }
+    .tx-badge.exp { background: rgba(248,113,113,0.15); }
+
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-name {
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tx-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+    .tx-right { text-align: right; flex-shrink: 0; }
+    .tx-amt { font-size: 14px; font-weight: 600; }
+    .tx-amt.inc { color: var(--inc); }
+    .tx-amt.exp { color: var(--exp); }
+
+    /* STATUS RELEASE */
+    .status-row {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 6px; flex-wrap: wrap;
+    }
+    .status-badge {
+      font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 99px;
+      flex-shrink: 0;
+    }
+    .badge-catat {
+      background: rgba(251,191,36,0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.25);
+    }
+    .badge-rilis {
+      background: rgba(52,211,153,0.12);
+      color: var(--inc);
+      border: 1px solid rgba(52,211,153,0.25);
+    }
+    .release-date-input {
+      font-family: inherit;
+      font-size: 11px;
+      background: var(--bg3);
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: var(--text);
+      padding: 3px 7px;
+      outline: none;
+      cursor: pointer;
+    }
+    .release-date-input:focus { border-color: var(--inc); }
+    .btn-confirm-rilis {
+      font-family: inherit;
+      font-size: 10px; font-weight: 600;
+      background: rgba(52,211,153,0.15);
+      border: 1px solid var(--inc);
+      border-radius: 6px;
+      color: var(--inc);
+      padding: 3px 9px;
+      cursor: pointer;
+    }
+    .btn-confirm-rilis:active { opacity: 0.7; }
+    .btn-batal-rilis {
+      font-family: inherit;
+      font-size: 10px;
+      background: none;
+      border: none;
+      color: var(--text2);
+      padding: 3px 6px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .release-info {
+      font-size: 11px; color: var(--text2); margin-top: 2px;
+    }
+
+    .btn-del {
+      background: none; border: none;
+      color: #475569; cursor: pointer;
+      font-size: 16px; padding: 4px; flex-shrink: 0;
+    }
+    .btn-del:hover { color: var(--exp); }
+
+    /* BACKUP */
+    .backup-info {
+      background: rgba(96,165,250,0.08);
+      border: 1px solid rgba(96,165,250,0.2);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 1.25rem;
+      font-size: 13px; color: var(--text2); line-height: 1.5;
+    }
+    .backup-info span { font-size: 22px; flex-shrink: 0; }
+    .db-status { font-size: 12px; margin-top: 6px; font-weight: 500; color: var(--inc); }
+    .file-path { font-size: 11px; color: #475569; margin-top: 4px; font-family: monospace; }
+
+    .backup-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg2); border: 1px solid var(--bg3);
+      border-radius: var(--radius-sm);
+      padding: 14px; margin-bottom: 10px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .backup-card:active { background: var(--bg3); }
+    .backup-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .backup-text { flex: 1; }
+    .backup-text strong { display: block; font-size: 14px; color: var(--text); margin-bottom: 2px; }
+    .backup-text span { font-size: 12px; color: var(--text2); }
+    .backup-arrow { color: var(--text2); font-size: 18px; }
+
+    .tips-list { display: flex; flex-direction: column; gap: 8px; }
+    .tip-item {
+      font-size: 13px; color: var(--text2);
+      background: var(--bg2); border: 1px solid var(--bg3);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg2); color: var(--text);
+      border: 1px solid var(--bg3);
+      border-radius: 24px; padding: 10px 20px;
+      font-size: 13px; white-space: nowrap;
+      opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 999; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* DATE INPUT */
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <p class="header-sub">Selamat datang 👋</p>
+    <h1 class="header-title">Kas Rumah</h1>
+    <div class="metric-row">
+      <div class="metric-card bal-card">
+        <span class="metric-icon">◈</span>
+        <div>
+          <p class="metric-label">Saldo</p>
+          <p class="metric-val" id="header-saldo">Rp 0</p>
+        </div>
+      </div>
+      <div class="metric-card inc-card">
+        <span class="metric-icon">↑</span>
+        <div>
+          <p class="metric-label">Pemasukan</p>
+          <p class="metric-val" id="total-inc">Rp 0</p>
+        </div>
+      </div>
+      <div class="metric-card exp-card">
+        <span class="metric-icon">↓</span>
+        <div>
+          <p class="metric-label">Pengeluaran</p>
+          <p class="metric-val" id="total-exp">Rp 0</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="filter-bar">
+    <select id="filter-month" onchange="render()">
+      <option value="semua">Semua bulan</option>
+    </select>
+  </div>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('ringkasan',this)">Ringkasan</button>
+    <button class="tab-btn" onclick="switchTab('tambah',this)">+ Tambah</button>
+    <button class="tab-btn" onclick="switchTab('riwayat',this)">Riwayat</button>
+    <button class="tab-btn" onclick="switchTab('backup',this)">Backup</button>
+  </nav>
+
+  <section id="tab-ringkasan" class="tab-section active">
+    <p class="section-label">Pengeluaran per kategori</p>
+    <div id="cat-bars"></div>
+  </section>
+
+  <section id="tab-tambah" class="tab-section">
+    <div class="form-card">
+      <div class="type-toggle">
+        <button class="type-btn active-inc" id="btn-inc" onclick="setType('inc')">↑ Pemasukan</button>
+        <button class="type-btn" id="btn-exp" onclick="setType('exp')">↓ Pengeluaran</button>
+      </div>
+      <div class="form-group">
+        <label>Keterangan</label>
+        <input type="text" id="f-desc" placeholder="Contoh: Gaji bulan ini...">
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Jumlah (Rp)</label>
+          <input type="number" id="f-amount" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>Tanggal</label>
+          <input type="date" id="f-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Kategori</label>
+        <select id="f-cat"></select>
+      </div>
+      <button class="btn-simpan" onclick="addTx()">Simpan Transaksi</button>
+    </div>
+  </section>
+
+  <section id="tab-riwayat" class="tab-section">
+    <div id="tx-list"></div>
+  </section>
+
+  <section id="tab-backup" class="tab-section">
+    <div class="backup-info">
+      <span>🗄️</span>
+      <div>
+        <p>Data tersimpan di localStorage browser.</p>
+        <p class="db-status" id="db-status">Menginisialisasi...</p>
+        <p class="file-path" id="file-path"></p>
+      </div>
+    </div>
+
+    <p class="section-label">Backup & Restore</p>
+    <div class="backup-card" onclick="exportData()">
+      <div class="backup-icon" style="background:rgba(52,211,153,0.12)">💾</div>
+      <div class="backup-text">
+        <strong>Export backup</strong>
+        <span>Download salinan file JSON</span>
+      </div>
+      <span class="backup-arrow">→</span>
+    </div>
+    <div class="backup-card" onclick="handleImport()">
+      <div class="backup-icon" style="background:rgba(96,165,250,0.12)">📂</div>
+      <div class="backup-text">
+        <strong>Import dari file</strong>
+        <span>Pulihkan dari file JSON</span>
+      </div>
+      <span class="backup-arrow">→</span>
+    </div>
+
+    <p class="section-label" style="margin-top:1.5rem">Info penyimpanan</p>
+    <div class="tips-list">
+      <div class="tip-item">✅ Data tersimpan otomatis di browser</div>
+      <div class="tip-item">✅ Export JSON untuk backup ke Google Drive</div>
+      <div class="tip-item">✅ Import JSON untuk pulihkan data</div>
+      <div class="tip-item">✅ Tidak hilang meski app ditutup</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="loading" class="loading-screen">
+  <div class="loading-inner">
+    <div class="loading-icon">💰</div>
+    <p>Membuka Kas Rumah...</p>
+  </div>
+</div>
+
+<input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImportBrowser(event)">
+
+<script>
+  const CAT_INC = ['Gaji','Bonus','Bisnis','Transfer Masuk','Lainnya'];
+  const CAT_EXP = ['Makan & Minum','Belanja','Transportasi','Tagihan','Kesehatan','Pendidikan','Hiburan','Tabungan','Lainnya'];
+
+  let data = { transactions: [] };
+  let currentType = 'inc';
+  
+
+  /* ── STORAGE ── */
+  function saveData() {
+    try { localStorage.setItem('kas-rumah', JSON.stringify(data)); } catch(e) {}
+  }
+  function loadData() {
+    try {
+      const raw = localStorage.getItem('kas-rumah');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Support both storage formats
+        if (parsed.data && Array.isArray(parsed.data)) {
+          data = { transactions: parsed.data };
+        } else if (parsed.transactions) {
+          data = parsed;
+        } else {
+          data = { transactions: [] };
+        }
+      }
+    } catch(e) { data = { transactions: [] }; }
+  }
+
+  /* ── FORMAT ── */
+  function formatRp(n) {
+    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  }
+
+  function formatDate(str) {
+    if (!str) return '-';
+    const d = new Date(str);
+    return d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+  }
+
+  /* ── TOAST ── */
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  /* ── TABS ── */
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── TYPE TOGGLE ── */
+  function setType(type) {
+    currentType = type;
+    const btnInc = document.getElementById('btn-inc');
+    const btnExp = document.getElementById('btn-exp');
+    btnInc.classList.remove('active-inc','active-exp');
+    btnExp.classList.remove('active-inc','active-exp');
+    if (type === 'inc') btnInc.classList.add('active-inc');
+    else btnExp.classList.add('active-exp');
+    populateCat();
+  }
+
+  function populateCat() {
+    const sel = document.getElementById('f-cat');
+    const cats = currentType === 'inc' ? CAT_INC : CAT_EXP;
+    sel.innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+  }
+
+  /* ── MONTHS FILTER ── */
+  function populateMonths() {
+    const sel = document.getElementById('filter-month');
+    const cur = sel.value;
+    const months = new Set();
+    data.transactions.forEach(t => {
+      const d = new Date(t.date);
+      months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    });
+    const sorted = [...months].sort().reverse();
+    sel.innerHTML = '<option value="semua">Semua bulan</option>' +
+      sorted.map(m => {
+        const [y, mo] = m.split('-');
+        const label = new Date(y, mo-1).toLocaleDateString('id-ID', { month:'long', year:'numeric' });
+        return `<option value="${m}" ${m===cur?'selected':''}>${label}</option>`;
+      }).join('');
+  }
+
+  function getFilteredTx() {
+    const val = document.getElementById('filter-month').value;
+    if (val === 'semua') return data.transactions;
+    return data.transactions.filter(t => t.date.startsWith(val));
+  }
+
+  /* ── RENDER ── */
+  function render() {
+    populateMonths();
+    const txs = getFilteredTx();
+    let totalInc = 0, totalExp = 0;
+    txs.forEach(t => {
+      if (t.type === 'inc') totalInc += t.amount;
+      else totalExp += t.amount;
+    });
+    document.getElementById('header-saldo').textContent = formatRp(totalInc - totalExp);
+    document.getElementById('total-inc').textContent = formatRp(totalInc);
+    document.getElementById('total-exp').textContent = formatRp(totalExp);
+    renderCatBars(txs);
+    renderTxList(txs);
+  }
+
+  function getCat(tx) { return tx.cat || tx.category || 'Lainnya'; }
+
+  function renderCatBars(txs) {
+    const el = document.getElementById('cat-bars');
+    const bycat = {};
+    txs.filter(t => t.type === 'exp').forEach(t => {
+      const c = getCat(t);
+      bycat[c] = (bycat[c] || 0) + t.amount;
+    });
+    const sorted = Object.entries(bycat).sort((a,b) => b[1]-a[1]);
+    if (!sorted.length) {
+      el.innerHTML = '<div class="empty-state">Belum ada pengeluaran</div>';
+      return;
+    }
+    const max = sorted[0][1];
+    el.innerHTML = sorted.map(([cat, amt]) => `
+      <div class="bar-item">
+        <div class="bar-meta">
+          <span class="bar-cat">${cat}</span>
+          <span class="bar-amt">${formatRp(amt)}</span>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill" style="width:${Math.round(amt/max*100)}%"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderTxList(txs) {
+    const el = document.getElementById('tx-list');
+    const sorted = [...txs].sort((a,b) => new Date(b.date) - new Date(a.date));
+    if (!sorted.length) {
+      el.innerHTML = '<div class="empty-state">Belum ada transaksi</div>';
+      return;
+    }
+    el.innerHTML = sorted.map(tx => {
+      const isExp = tx.type === 'exp';
+      const txId = String(tx.id || (tx.desc + '_' + tx.date + '_' + tx.amount));
+      const released = tx.released || false;
+      const releaseDate = tx.releaseDate || '';
+
+      let statusHtml = '';
+      if (isExp) {
+        if (released) {
+          statusHtml = `
+            <div class="status-row">
+              <span class="status-badge badge-rilis">✓ Dirilis</span>
+              <span class="release-info">${formatDate(releaseDate)}</span>
+              <button class="btn-batal-rilis" onclick="batalRilis('${txId}')">Batal</button>
+            </div>`;
+        } else {
+          statusHtml = `
+            <div class="status-row">
+              <span class="status-badge badge-catat">○ Dicatat</span>
+              <input type="date" class="release-date-input" id="rd-${txId}" title="Pilih tanggal rilis">
+              <button class="btn-confirm-rilis" onclick="konfirmasiRilis('${txId}')">Rilis</button>
+            </div>`;
+        }
+      }
+
+      return `
+        <div class="tx-item">
+          <div class="tx-badge ${isExp ? 'exp' : 'inc'}">${isExp ? '↓' : '↑'}</div>
+          <div class="tx-info">
+            <div class="tx-name">${tx.desc}</div>
+            <div class="tx-sub">${getCat(tx)} · ${formatDate(tx.date)}</div>
+            ${statusHtml}
+          </div>
+          <div class="tx-right">
+            <div class="tx-amt ${isExp ? 'exp' : 'inc'}">${isExp ? '-' : '+'}${formatRp(tx.amount)}</div>
+            <button class="btn-del" onclick="deleteTx('${txId}')" title="Hapus">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ── RELEASE ACTIONS ── */
+  function konfirmasiRilis(id) {
+    const input = document.getElementById('rd-' + id);
+    const tgl = input ? input.value : '';
+    if (!tgl) { showToast('⚠ Pilih tanggal rilis dulu'); return; }
+    const idx = data.transactions.findIndex(t => String(t.id || (t.desc + '_' + t.date + '_' + t.amount)) === id);
+    if (idx === -1) return;
+    data.transactions[idx].released = true;
+    data.transactions[idx].releaseDate = tgl;
+    saveData();
+    render();
+    showToast('✓ Ditandai Dirilis ' + formatDate(tgl));
+  }
+
+  function batalRilis(id) {
+    const idx = data.transactions.findIndex(t => String(t.id || (t.desc + '_' + t.date + '_' + t.amount)) === id);
+    if (idx === -1) return;
+    data.transactions[idx].released = false;
+    data.transactions[idx].releaseDate = '';
+    saveData();
+    render();
+    showToast('○ Status kembali ke Dicatat');
+  }
+
+  /* ── ADD TX ── */
+  function addTx() {
+    const desc = document.getElementById('f-desc').value.trim();
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const date = document.getElementById('f-date').value;
+    const cat = document.getElementById('f-cat').value;
+
+    if (!desc) { showToast('⚠ Keterangan wajib diisi'); return; }
+    if (!amount || amount <= 0) { showToast('⚠ Jumlah tidak valid'); return; }
+    if (!date) { showToast('⚠ Tanggal wajib diisi'); return; }
+
+    data.transactions.push({
+      id: Date.now(),
+      type: currentType,
+      desc,
+      amount,
+      date,
+      cat,
+      released: false,
+      releaseDate: ''
+    });
+
+    saveData();
+    render();
+    showToast('✓ Transaksi disimpan');
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-amount').value = '';
+  }
+
+  /* ── DELETE TX ── */
+  function deleteTx(id) {
+    data.transactions = data.transactions.filter(t => String(t.id || (t.desc + '_' + t.date + '_' + t.amount)) !== id);
+    saveData();
+    render();
+    showToast('✓ Transaksi dihapus');
+  }
+
+  /* ── EXPORT / IMPORT ── */
+  /*function exportData() {
+    const exportObj = {
+      version: 1,
+      exported: new Date().toISOString(),
+      data: data.transactions.map(t => {
+        const obj = {
+          type: t.type,
+          desc: t.desc,
+          amount: t.amount,
+          date: t.date,
+          cat: t.cat || t.category || 'Lainnya'
+        };
+        if (t.id) obj.id = t.id;
+        if (t.released) obj.released = t.released;
+        if (t.releaseDate) obj.releaseDate = t.releaseDate;
+        return obj;
+      })
+    };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kas-rumah-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ File JSON diunduh');
+  }*/
+  
+  async function exportData() {
+  const json = JSON.stringify({ version:1, exported: new Date().toISOString(), data: allTxs }, null, 2);
+  const fileName = `kas-rumah-backup-${new Date().toISOString().slice(0,10)}.json`;
+
+  // Kalau jalan di APK (Capacitor native)
+  if (window.Capacitor?.isNativePlatform?.()) {
+    try {
+      const { Filesystem } = window.Capacitor.Plugins;
+
+      // Pastikan folder ada
+      try {
+        await Filesystem.mkdir({
+          path: 'KasRumah',
+          directory: 'DOCUMENTS',
+          recursive: true
+        });
+      } catch(e) {} // folder sudah ada, tidak masalah
+
+      // Tulis file
+      await Filesystem.writeFile({
+        path: `KasRumah/${fileName}`,
+        directory: 'DOCUMENTS',
+        data: json,
+        encoding: 'utf8'
+      });
+
+      showToast('Tersimpan di Documents/KasRumah/ 💾');
+    } catch (err) {
+      showToast('Gagal simpan: ' + err.message);
+    }
+
+  // Kalau jalan di browser biasa
+  } else {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup diunduh! 💾');
+  }
+}
+
+  /*unction handleImport() {
+    document.getElementById('import-input').click();
+  }*/
+  async function handleImport() {
+  // Kalau di APK
+  if (window.Capacitor?.isNativePlatform?.()) {
+    try {
+      const { Filesystem } = window.Capacitor.Plugins;
+
+      // Cari semua file backup di folder KasRumah
+      const result = await Filesystem.readdir({
+        path: 'KasRumah',
+        directory: 'DOCUMENTS'
+      });
+
+      // Filter hanya file .json
+      const jsonFiles = result.files
+        .filter(f => (f.name || f).endsWith('.json'))
+        .map(f => f.name || f)
+        .sort()
+        .reverse(); // file terbaru di atas
+
+      if (!jsonFiles.length) {
+        showToast('Tidak ada file backup di Documents/KasRumah/');
+        return;
+      }
+
+      // Tampilkan pilihan file ke user
+      const pilihan = await showFilePicker(jsonFiles);
+      if (!pilihan) return;
+
+      // Baca isi file yang dipilih
+      const fileData = await Filesystem.readFile({
+        path: `KasRumah/${pilihan}`,
+        directory: 'DOCUMENTS',
+        encoding: 'utf8'
+      });
+
+      const parsed   = JSON.parse(fileData.data);
+      const imported = parsed.data || parsed;
+      if (!Array.isArray(imported)) throw new Error('Format tidak valid');
+      if (!confirm(`Import ${imported.length} transaksi dari ${pilihan}?\nData lama akan diganti.`)) return;
+
+      await Storage.replaceAll(imported);
+      allTxs = await Storage.load();
+      updateMonthOptions();
+      render();
+      showToast(`${imported.length} transaksi diimport! ✅`);
+
+    } catch (err) {
+      showToast('Gagal import: ' + err.message);
+    }
+
+  // Kalau di browser
+  } else {
+    document.getElementById('import-input').click();
+  }
+}
+
+function showFilePicker(files) {
+  return new Promise(resolve => {
+    // Buat modal sederhana
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1e293b;border-radius:12px 12px 0 0;padding:1.25rem;width:100%;max-width:520px;max-height:60vh;overflow-y:auto';
+    box.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">Pilih file backup</div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:1rem">Documents/KasRumah/</div>
+      ${files.map(f => `
+        <div class="file-item" data-file="${f}" style="padding:12px;background:#334155;border-radius:8px;margin-bottom:8px;cursor:pointer;font-size:13px">
+          📄 ${f}
+        </div>`).join('')}
+      <button style="width:100%;padding:10px;background:none;border:1px solid #334155;border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer;margin-top:4px">Batal</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Klik file
+    box.querySelectorAll('.file-item').forEach(el => {
+      el.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        resolve(el.dataset.file);
+      });
+    });
+
+    // Klik batal
+    box.querySelector('button').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(null);
+    });
+
+    // Klik overlay
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+        resolve(null);
+      }
+    });
+  });
+}
+
+  function handleImportBrowser(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        // Support format lama { transactions: [...] } dan format baru { version, data: [...] }
+        if (parsed.data && Array.isArray(parsed.data)) {
+          data = { transactions: parsed.data };
+        } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+          data = parsed;
+        } else if (Array.isArray(parsed)) {
+          data = { transactions: parsed };
+        } else {
+          showToast('✗ Format file tidak dikenal'); return;
+        }
+        saveData();
+        render();
+        showToast('✓ Data berhasil diimpor (' + data.transactions.length + ' transaksi)');
+      } catch {
+        showToast('✗ File tidak valid');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  /* ── INIT ── */
+  function init() {
+    loadData();
+    allTxs = data.transactions;
+    document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+    setType('inc');
+    render();
+    document.getElementById('db-status').textContent = 'Data tersimpan di localStorage';
+    document.getElementById('file-path').textContent = 'Gunakan Export untuk simpan ke file';
+    setTimeout(() => {
+      const loading = document.getElementById('loading');
+      loading.classList.add('fade');
+      setTimeout(() => loading.remove(), 400);
+    }, 600);
+  }
+
+  init();
+</script>
+</body>
+</html>
