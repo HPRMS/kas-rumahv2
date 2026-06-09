@@ -844,8 +844,9 @@
       if (!Array.isArray(imported)) throw new Error('Format tidak valid');
       if (!confirm(`Import ${imported.length} transaksi dari ${pilihan}?\nData lama akan diganti.`)) return;
 
-      await Storage.replaceAll(imported);
-      allTxs = await Storage.load();
+      data = { transactions: imported };
+      allTxs = data.transactions;
+      saveData();
       updateMonthOptions();
       render();
       showToast(`${imported.length} transaksi diimport! ✅`);
