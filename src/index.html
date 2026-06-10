@@ -280,9 +280,10 @@
       cursor: pointer;
       text-decoration: underline;
     }
-    .release-info {
+    /*.release-info {
       font-size: 11px; color: var(--text2); margin-top: 2px;
-    }
+    }*/
+    .release-info { font-size: 11px; color: #f59e0b; margin-top: 2px; }
 
     .btn-del {
       background: none; border: none;
@@ -638,14 +639,16 @@
           statusHtml = `
             <div class="status-row">
               <span class="status-badge badge-rilis">✓ Dirilis</span>
-              <span class="release-info">${formatDate(releaseDate)}</span>
+              <!--span class="release-info">${formatDate(releaseDate)}</span-->
+               <span class="release-info">${formatDate(releaseDate)}</span>
               <button class="btn-batal-rilis" onclick="batalRilis('${txId}')">Batal</button>
             </div>`;
         } else {
           statusHtml = `
             <div class="status-row">
               <span class="status-badge badge-catat">○ Dicatat</span>
-              <input type="date" class="release-date-input" id="rd-${txId}" title="Pilih tanggal rilis">
+              <!--input type="date" class="release-date-input" id="rd-${txId}" title="Pilih tanggal rilis"-->
+               <span class="release-info">${formatDate(releaseDate)}</span>
               <button class="btn-confirm-rilis" onclick="konfirmasiRilis('${txId}')">Rilis</button>
             </div>`;
         }
@@ -668,7 +671,7 @@
   }
 
   /* ── RELEASE ACTIONS ── */
-  function konfirmasiRilis(id) {
+  /*function konfirmasiRilis(id) {
     const input = document.getElementById('rd-' + id);
     const tgl = input ? input.value : '';
     if (!tgl) { showToast('⚠ Pilih tanggal rilis dulu'); return; }
@@ -679,6 +682,15 @@
     saveData();
     render();
     showToast('✓ Ditandai Dirilis ' + formatDate(tgl));
+  }*/
+  function konfirmasiRilis(id) {
+    const idx = data.transactions.findIndex(t => String(t.id || (t.desc + '_' + t.date + '_' + t.amount)) === id);
+    if (idx === -1) return;
+    data.transactions[idx].released = true;
+    data.transactions[idx].releaseDate = new Date().toISOString().slice(0, 10); // ← otomatis hari ini
+    saveData();
+    render();
+    showToast('✓ Dirilis ' + formatDate(data.transactions[idx].releaseDate));
   }
 
   function batalRilis(id) {
@@ -844,10 +856,13 @@
       if (!Array.isArray(imported)) throw new Error('Format tidak valid');
       if (!confirm(`Import ${imported.length} transaksi dari ${pilihan}?\nData lama akan diganti.`)) return;
 
+      // await Storage.replaceAll(imported);
+      // allTxs = await Storage.load();
+
       data = { transactions: imported };
       allTxs = data.transactions;
       saveData();
-      //updateMonthOptions();
+      //populateMonths();
       render();
       showToast(`${imported.length} transaksi diimport! ✅`);
 
